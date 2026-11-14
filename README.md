@@ -66,6 +66,7 @@ docker run --rm ghcr.io/dvcrn/beeper-headless:latest --version
 | `BEEPER_INTERNAL_PORT` | `23374` | Loopback port passed to `beeper targets add server --port` on initial target creation |
 | `BEEPER_SERVER_ENV` | `production` | Beeper Server environment (`production` or `staging`), used on initial target creation |
 | `BEEPER_LOG_STREAMS` | `beeper-server desktop-api` | Space-separated `RollingLogger` log streams under `<dataDir>/logs/` to relay to container stdout (`none` to disable; other streams include `sdk` and `sqlite_worker-1..6`) |
+| `BEEPER_LOG_LEVEL` | `info` | Lowest level relayed to stdout: `trace`, `debug`, `info`, `warn` or `error`. `info` also includes the server's untyped `[log]` lines. Log files on disk are unaffected. |
 
 ## Auto-updates
 

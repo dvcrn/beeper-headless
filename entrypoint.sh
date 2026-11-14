@@ -14,6 +14,7 @@ PORT="${BEEPER_PORT:-23373}"
 INTERNAL_PORT="${BEEPER_INTERNAL_PORT:-23374}"
 SERVER_ENV="${BEEPER_SERVER_ENV:-production}"
 LOG_STREAMS="${BEEPER_LOG_STREAMS-beeper-server desktop-api}"
+LOG_LEVEL="${BEEPER_LOG_LEVEL:-info}"
 
 mkdir -p "${CONFIG_DIR}"
 
@@ -79,6 +80,18 @@ log_files() {
   done
 }
 
+# beeper-server has no log level setting, so drop lower levels while relaying.
+# Continuation lines (no "[level] " prefix) follow the entry they belong to.
+filter_level() {
+  awk -v min="${LOG_LEVEL}" '
+    BEGIN { split("trace debug log info warn error", names, " "); for (i in names) rank[names[i]] = i
+            if (min == "info") min = "log"; if (!(min in rank)) min = "trace" }
+    match($0, /^\[[a-z]+\] /) { lvl = substr($0, 2, RLENGTH - 3); show = !(lvl in rank) || rank[lvl] >= rank[min] }
+    /^==> / { show = 1 }
+    show { print; fflush() }
+  '
+}
+
 CURRENT_LOGS=""
 while kill -0 "${SERVER_PID}" 2>/dev/null; do
   LOGS="$(log_files)"
@@ -86,7 +99,7 @@ while kill -0 "${SERVER_PID}" 2>/dev/null; do
     [ -n "${TAIL_PID}" ] && kill "${TAIL_PID}" 2>/dev/null || true
     # Only replay history on the first tail so a rotation doesn't duplicate lines.
     mapfile -t files <<<"${LOGS}"
-    tail -n "$([ -z "${CURRENT_LOGS}" ] && echo 50 || echo 0)" -F "${files[@]}" 2>/dev/null &
+    tail -n "$([ -z "${CURRENT_LOGS}" ] && echo 50 || echo 0)" -F "${files[@]}" 2>/dev/null > >(filter_level) &
     TAIL_PID=$!
     CURRENT_LOGS="${LOGS}"
   fi
