@@ -12,20 +12,13 @@ CONFIG_DIR="${BEEPER_CLI_CONFIG_DIR:-/data}"
 TARGET_NAME=server
 PORT="${BEEPER_PORT:-23373}"
 INTERNAL_PORT="${BEEPER_INTERNAL_PORT:-23374}"
-CHANNEL="${BEEPER_CHANNEL:-stable}"
 SERVER_ENV="${BEEPER_SERVER_ENV:-production}"
 LOG_STREAMS="${BEEPER_LOG_STREAMS-beeper-server desktop-api}"
 
 mkdir -p "${CONFIG_DIR}"
 
-# `beeper targets start` finds the binary via installations.json, so a bare binary on the volume isn't enough.
-if ! grep -qs '"server"' "${CONFIG_DIR}/installations.json"; then
-  echo "Installing Beeper Server via beeper CLI (channel=${CHANNEL}, env=${SERVER_ENV})..."
-  beeper install server --channel "${CHANNEL}" --server-env "${SERVER_ENV}"
-elif [ "${BEEPER_AUTO_UPDATE_SERVER:-false}" = "true" ]; then
-  echo "Checking for Beeper Server updates via beeper CLI..."
-  beeper update --server || true
-fi
+# The server binary is baked into the image; `beeper targets start` runs $BEEPER_SERVER_BIN directly.
+echo "Beeper Server ${BEEPER_SERVER_VERSION:-unknown} (${BEEPER_SERVER_BIN})"
 
 TARGET_FILE="${CONFIG_DIR}/targets/${TARGET_NAME}.json"
 if [ ! -f "${TARGET_FILE}" ]; then

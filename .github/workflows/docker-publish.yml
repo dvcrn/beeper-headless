@@ -44,9 +44,11 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
 
-      - name: Read CLI version
+      - name: Read versions
         id: version
-        run: echo "version=$(tr -d '[:space:]' < VERSION)" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "version=$(tr -d '[:space:]' < VERSION)" >> "$GITHUB_OUTPUT"
+          echo "server=$(sed -n 's/^ARG BEEPER_SERVER_VERSION=//p' Dockerfile)" >> "$GITHUB_OUTPUT"
 
       - name: Set up QEMU
         if: github.event_name != 'pull_request'
@@ -71,6 +73,7 @@ jobs:
           tags: |
             type=raw,value=latest,enable=${{ github.event_name != 'pull_request' }}
             type=raw,value=${{ steps.version.outputs.version }},enable=${{ github.event_name != 'pull_request' }}
+            type=raw,value=${{ steps.version.outputs.server }},enable=${{ github.event_name != 'pull_request' }}
 
       - name: Build and smoke-test native image
         uses: docker/build-push-action@v6
@@ -82,10 +85,18 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Smoke test CLI binary
+      - name: Smoke test server under k8s-like securityContext
         run: |
           docker run --rm beeper-headless:test --version
-          docker run --rm beeper-headless:test --help >/dev/null
+          docker run -d --name smoke --user 65534:65534 --read-only --cap-drop ALL \
+            --security-opt no-new-privileges:true --tmpfs /tmp \
+            --tmpfs /data:rw,exec,uid=65534,gid=65534 -p 127.0.0.1:23373:23373 beeper-headless:test
+          for i in $(seq 1 60); do
+            curl -fsS http://127.0.0.1:23373/v1/info && exit 0
+            sleep 2
+          done
+          docker logs smoke
+          exit 1
 
       - name: Build and push multi-arch image
         if: github.event_name != 'pull_request'
