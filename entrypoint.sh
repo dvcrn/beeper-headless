@@ -18,7 +18,8 @@ LOG_STREAMS="${BEEPER_LOG_STREAMS-beeper-server desktop-api}"
 
 mkdir -p "${CONFIG_DIR}"
 
-if [ ! -x "${CONFIG_DIR}/bin/beeper-server" ]; then
+# `beeper targets start` finds the binary via installations.json, so a bare binary on the volume isn't enough.
+if ! grep -qs '"server"' "${CONFIG_DIR}/installations.json"; then
   echo "Installing Beeper Server via beeper CLI (channel=${CHANNEL}, env=${SERVER_ENV})..."
   beeper install server --channel "${CHANNEL}" --server-env "${SERVER_ENV}"
 elif [ "${BEEPER_AUTO_UPDATE_SERVER:-false}" = "true" ]; then
