@@ -1,0 +1,9 @@
+services:
+  beeper-headless:
+    build: .
+    container_name: beeper-headless
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:23373:23373"
+    volumes:
+      - ./data:/data
